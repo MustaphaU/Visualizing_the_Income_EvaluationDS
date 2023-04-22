@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <style>
+    /* Scatter plot styles */
+    .dot.less {
+      fill: orange;
+    }
+    .dot.greater {
+      fill: blue;
+    }
+    .dot:hover {
+      stroke: black;
+      stroke-width: 2px;
+    }
+
+    /* Bar chart styles */
+    .bar.less {
+      fill: orange;
+    }
+    .bar.greater {
+      fill:blue;
+    }
+    .bar:hover {
+      stroke: black;
+      stroke-width: 2px;
+    }
+  </style>
+</head>
+<body>
+    <h1>Income Evaluation Visualization</h1>
+  <p>In this visualization, I use D3 to create two interactive charts that show the relationship between different variables in the income evaluation dataset. The first chart is a scatter plot that shows the relationship between age, hours per week, and capital gain, and the second chart is a bar chart that shows the relationship between education and capital gain. The size of the dots in the scatter plot represents the capital gain, and the color of the dots represents the income. Blue dots represent people whose income is greater than 50K and orange dots represent people whose income is less than or equal to 50K; the two charts are linked together through a mouseover event, when a user hovers over an element in one chart, the corresponding elements in the other chart will be highlighted.</p>
+<!-- Scatter plot container -->
+<div id="scatter"></div>
+
+<!-- Bar chart container -->
+<div id="bar"></div>
+
+<script>
+  // Load the dataset
+  d3.csv("income_evaluation.csv", function(error, data) {
+    if (error) {
+        console.log(error);
+    } else {
+      // Use the data here
+      // Set up the scatter plot
+      var scatter = d3.select("#scatter")
+        .append("svg")
+        .attr("width", 600)
+        .attr("height", 400);
+
+      var x = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.age))
+        .range([50, 550]);
+
+      var y = d3.scaleLinear()
+        .domain(d3.extent(data, d => d.hours_per_week))
+        .range([350, 50]);
+
+      var radius = d3.scaleSqrt()
+        .domain(d3.extent(data, d => d.capital_gain))
+        .range([2, 10]);
+
+      var color = d3.scaleOrdinal()
+        .domain(data.map(d => d.income))
+        .range(d3.schemeCategory10);
+
+      scatter.append("g")
+        .attr("transform", "translate(0, 350)")
+        .call(d3.axisBottom(x));
+
+      scatter.append("g")
+        .attr("transform", "translate(50, 0)")
+        .call(d3.axisLeft(y));
+
+      scatter.selectAll(".dot")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("class", "dot")
+        .attr("cx", d => x(d.age))
+        .attr("cy", d => y(d.hours_per_week))
+        .attr("r", d => radius(d.capital_gain))
+        .attr("class", function(d) {
+            if (d.income == ">50K") {
+              return "dot greater";
+            } else {
+              return "dot less";
+            }
+            })
+        .on("mouseover", function(d) {
+          // Highlight the corresponding bar in the bar chart
+          d3.selectAll(".bar")
+            .filter(b => b.education == d.education)
+            .attr("stroke", "black")
+            .attr("stroke-width", 2);
+        })
+        .on("mouseout", function() {
+          d3.selectAll(".bar")
+            .attr("stroke", "none")
+            .attr("stroke-width", 0);
+        });
+
+      // Add a title and labels
+      scatter.append("text")
+        .attr("x", 300)
+        .attr("y", 20)
+        .attr("text-anchor", "middle")
+        .style("font-size", "20px")
+        .text("Age vs Hours per week (dot size represents Capital gain)");
+
+      scatter.append("text")
+        .attr("x", -70)
+        .attr("y", 12)
+        .attr("text-anchor", "middle")
+        .attr("transform", "rotate(-90)")
+        .style("font-size", "14px")
+        .style("font-weight", "bold")
+        .text("Hours per week");
+
+      scatter.append("text")
+        .attr("x", 550)
+        .attr("y", 390)
+        .style("font-size", "15px")
+        .style("font-weight", "bold")
+        .text("Age");
+
+      // Set up the bar chart
+      var bar = d3.select("#bar")
+        .append("svg")
+        .attr("width", 600)
+        .attr("height", 400);
+
+      var x = d3.scaleBand()
+        .domain(data.map(d => d.education))
+        .range([50, 550])
+        .padding(0.2);
+
+      var y = d3.scaleLinear()
+        .domain([0, d3.max(data, d => d.capital_gain)])
+        .range([350, 50]);
+
+      bar.append("g")
+        .attr("transform", "translate(0, 350)")
+        .call(d3.axisBottom(x))
+        //select all text labels in the axis, then position + rotate
+        .selectAll("text")  
+        .style("text-anchor", "end")
+        .style("font-size", "9px")
+        .attr("dx", "-1em")
+        .attr("dy", "-0.5em")
+        .attr("transform", "rotate(-90)");
+
+      bar.append("g")
+        .attr("transform", "translate(50, 0)")
+        .call(d3.axisLeft(y));
+
+      bar.selectAll(".bar")
+        .data(data)
+        .enter()
+        .append("rect")
+        .attr("class", "bar")
+        .attr("x", d => x(d.education))
+        .attr("y", d => y(d.capital_gain))
+        .attr("width", x.bandwidth())
+        .attr("height", d => 350 - y(d.capital_gain))
+        .attr("class", function(d) {
+            if (d.income == ">50K") {
+              return "bar greater";
+            } else {
+              return "bar less";
+            }
+            })
+        .on("mouseover", function(d) {
+          // Highlight the corresponding dot in the scatter plot
+          d3.selectAll(".dot")
+            .filter(dot => dot.education == d.education)
+            .attr("stroke", "black")
+            .attr("stroke-width", 2);
+        })
+        .on("mouseout", function() {
+          d3.selectAll(".dot")
+            .attr("stroke", "none")
+            .attr("stroke-width", 0);
+        });
+
+      // Add a title and labels
+      bar.append("text")
+        .attr("x", 300)
+        .attr("y", 20)
+        .attr("text-anchor", "middle")
+        .style("font-size", "20px")
+        .text("Education vs Capital gain");
+
+      bar.append("text")
+        .attr("x", 530)
+        .attr("y", 390)
+        .style("font-size", "14px")
+        .style("font-weight", "bold")
+        .text("Education");
+
+      bar.append("text")
+        .attr("x", -70)
+        .attr("y", 9)
+        .attr("text-anchor", "middle")
+        .attr("transform", "rotate(-90)")
+        .style("font-size", "14px")
+        .style("font-weight", "bold")
+        .text("Capital gain");
+    }
+  });
+</script>
+<h2>About the visualizations</h2>
+  <p>In this task, I created a single HTML file that contains the D3 code to display two interactive visualizations of the income evaluation dataset. The first visualization is a scatter plot that shows the relationship between age, hours per week, and capital gain, and the second visualization is a bar chart that shows the relationship between education and capital gain. The size of the dots in the scatter plot represents the capital gain, and the color of the dots represents the income, blue dots represent people whose income is greater than 50K and orange dots represent people whose income is less than or equal to 50K.</p>
+  <p><h2>Observations and Challenges</h2>
+    From a cursory look at the scatter plot, there is a higher density of large capital gain (large circles) between 30 and 70 hours per week and and Ages between 30 and 60 years. However, beyond 80 hours per week and below 30 hours per week, the capital gains are mostly small (small circles), same applies to ages above 70 years. In the second  visualization, the preschoolers bar is all orange, an indication that they all earn income less than 50k. However, those with qualifications such as Bachelors, Doctorate, HS-grad, and College are most likely to earn above 50k and the highest capital gain. I alos observed that some of the columns have missing data. For example, “native_country” has 583 missing data, “workclass” has 1836 missing values, and “occupation” has 1843 missing values, these missing values were ignored since the columns were not used in my visualizations. One of the challenges I encountered was accessing the dataset from my local directory using my web browser. I had to override the default setting of chrome browser to enable access. Alternatively, I set up a python simple server which allowed me to view the html file and the directory from a browser without having to override the brwoser's default settings. Another challenge was determining what features to use in the two visualizations and to interactively link the visualizations.  It took a number of tries to figure out this choice and create an interactive link between the two visualizations and correctly filter the data based on the hovered element. I used the D3 documentation and some online tutorials as my main resources to help me understand how to use the D3 library and to find the correct syntax for certain operations.
+</p>
+  <h3>Resources used:</h3>
+  <ul>
+    <li>D3.js documentation: https://github.com/d3/d3</li>
+    <li>D3 Scatter Plot Example: https://bl.ocks.org/d3noob/6f082f0e3b820b6bf68b78f2f7786084</li>
+    <li>D3 Bar Chart Example: https://bl.ocks.org/d3noob/8952219</li>
+    <li>D3 Mouseover Event: https://www.d3-graph-gallery.com/graph/interactivity_hover.html</li>
+    <li>D3 Scale Functions: https://github.com/d3/d3-scale</li>
+  </ul>
+</body>
+</html>
+
